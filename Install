@@ -1,0 +1,65 @@
+#!/bin/bash
+set -e
+
+# Configuración
+REPO="johan2310/hy2.sh"
+BRANCH="main"
+SCRIPT_NAME="hy.sh"
+INSTALL_PATH="/usr/local/bin/tfn-udp"  # Opcional: donde dejar el script instalado
+
+# Colores para output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+echo -e "${GREEN}=== Instalador de TFN-UDP (Hysteria) ===${NC}"
+
+# Verificar curl
+if ! command -v curl &> /dev/null; then
+    echo -e "${YELLOW}curl no está instalado. Intentando instalarlo...${NC}"
+    if command -v apt-get &> /dev/null; then
+        apt-get update && apt-get install -y curl
+    elif command -v dnf &> /dev/null; then
+        dnf install -y curl
+    elif command -v yum &> /dev/null; then
+        yum install -y curl
+    elif command -v pacman &> /dev/null; then
+        pacman -Sy --noconfirm curl
+    else
+        echo -e "${RED}No se pudo instalar curl. Instálalo manualmente y vuelve a intentarlo.${NC}"
+        exit 1
+    fi
+fi
+
+# Crear directorio temporal
+TMP_DIR=$(mktemp -d)
+cd "$TMP_DIR"
+
+# Descargar el script principal
+echo -e "${GREEN}Descargando $SCRIPT_NAME...${NC}"
+curl -sL "https://raw.githubusercontent.com/$REPO/$BRANCH/$SCRIPT_NAME" -o "$SCRIPT_NAME"
+
+# Verificar descarga
+if [ ! -f "$SCRIPT_NAME" ]; then
+    echo -e "${RED}Error: No se pudo descargar el script.${NC}"
+    cd / && rm -rf "$TMP_DIR"
+    exit 1
+fi
+
+# Hacer ejecutable
+chmod +x "$SCRIPT_NAME"
+
+# Opción 1: Instalar permanentemente en /usr/local/bin (requiere sudo)
+if [ -w /usr/local/bin ]; then
+    mv "$SCRIPT_NAME" "$INSTALL_PATH"
+    echo -e "${GREEN}Script instalado en $INSTALL_PATH${NC}"
+    cd / && rm -rf "$TMP_DIR"
+    echo -e "${GREEN}Ejecútalo con: sudo $INSTALL_PATH [opciones]${NC}"
+else
+    # Opción 2: Ejecutar directamente desde el directorio temporal
+    echo -e "${YELLOW}No tienes permisos para escribir en /usr/local/bin. Ejecutando desde directorio temporal...${NC}"
+    echo -e "${GREEN}Ejecutando $SCRIPT_NAME...${NC}"
+    ./"$SCRIPT_NAME" "$@"
+    cd / && rm -rf "$TMP_DIR"
+fi
